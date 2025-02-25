@@ -417,6 +417,8 @@ type Metrics struct {
 	// GuardrailMetrics contains metrics related to different guardrails in the
 	// SQL layer.
 	GuardrailMetrics GuardrailMetrics
+
+	DeltaMetrics DeltaMetrics
 }
 
 // ServerMetrics collects timeseries data about Server activities that are
@@ -600,6 +602,9 @@ func makeMetrics(internal bool, sv *settings.Values) Metrics {
 			TxnRowsWrittenErrCount: metric.NewCounter(getMetricMeta(MetaTxnRowsWrittenErr, internal)),
 			TxnRowsReadLogCount:    metric.NewCounter(getMetricMeta(MetaTxnRowsReadLog, internal)),
 			TxnRowsReadErrCount:    metric.NewCounter(getMetricMeta(MetaTxnRowsReadErr, internal)),
+		},
+		DeltaMetrics: DeltaMetrics{
+			SelectCountDelta: *metric.NewExportedCounterVec(getMetricMeta(MetaSelectDeltaExecuted, internal), []string{"app_name"}, metric.AggregationTemporalityDelta),
 		},
 	}
 }
@@ -4533,6 +4538,14 @@ func (ex *connExecutor) getDescIDGenerator() eval.DescIDGenerator {
 		)
 	}
 	return ex.server.cfg.DescIDGenerator
+}
+
+type DeltaMetrics struct {
+	SelectCountDelta metric.CounterVec
+}
+
+func (dm *DeltaMetrics) incrementCount(ex *connExecutor, stmt tree.Statement) {
+	dm.SelectCountDelta.Inc(map[string]string{"app_name": ex.applicationName.Load().(string)}, 1)
 }
 
 // StatementCounters groups metrics for counting different types of

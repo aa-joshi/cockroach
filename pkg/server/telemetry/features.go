@@ -117,6 +117,13 @@ func NewCounterWithMetric(metadata metric.Metadata) CounterWithMetric {
 	}
 }
 
+/*func NewCounterWithDeltaMetric(metadata metric.Metadata) CounterWithMetric {
+	return CounterWithMetric{
+		telemetry: GetCounter(metadata.Name),
+		metric:    metric.NewExportedCounterVec(metadata, []string{"database"}, metric.AggregationTemporalityDelta),
+	}
+}
+*/
 // Inc increments both counters.
 func (c CounterWithMetric) Inc() {
 	Inc(c.telemetry)

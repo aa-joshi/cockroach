@@ -4040,6 +4040,7 @@ func (ex *connExecutor) incrementStartedStmtCounter(ast tree.Statement) {
 // statement counter for stmt's type.
 func (ex *connExecutor) incrementExecutedStmtCounter(ast tree.Statement) {
 	ex.metrics.ExecutedStatementCounters.incrementCount(ex, ast)
+	ex.metrics.DeltaMetrics.incrementCount(ex, ast)
 }
 
 // payloadHasError returns true if the passed payload implements

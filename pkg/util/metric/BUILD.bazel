@@ -11,6 +11,7 @@ go_library(
         "histogram_buckets.go",
         "histogram_snapshot.go",
         "metric.go",
+        "metric_tracker.go",
         "prometheus_exporter.go",
         "prometheus_rule_exporter.go",
         "registry.go",

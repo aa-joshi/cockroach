@@ -38,6 +38,7 @@ type PrometheusExporter struct {
 	muScrapeAndPrint syncutil.Mutex
 	families         map[string]*prometheusgo.MetricFamily
 	selection        map[string]struct{}
+	metricTracker    *MetricTracker
 }
 
 // MakePrometheusExporter returns an initialized prometheus exporter.
@@ -49,7 +50,7 @@ func MakePrometheusExporter() PrometheusExporter {
 // exporter. It would only consider selected metrics when scraping. The caller
 // should not modify the map after the call.
 func MakePrometheusExporterForSelectedMetrics(selection map[string]struct{}) PrometheusExporter {
-	return PrometheusExporter{families: map[string]*prometheusgo.MetricFamily{}, selection: selection}
+	return PrometheusExporter{families: map[string]*prometheusgo.MetricFamily{}, selection: selection, metricTracker: NewMetricTracker()}
 }
 
 // find the family for the passed-in metric, or create and return it if not found.
@@ -87,6 +88,13 @@ func (pm *PrometheusExporter) ScrapeRegistry(registry *Registry, includeChildMet
 		switch prom := v.(type) {
 		case PrometheusVector:
 			for _, m := range prom.ToPrometheusMetrics() {
+
+				aggregationTemporality := getAggregationTemporality(m)
+
+				// If the metric is a delta metric, we need to convert it to a delta value.
+				if aggregationTemporality == AggregationTemporalityDelta {
+
+				}
 				m := m
 				m.Label = append(m.Label, labels...)
 				m.Label = append(m.Label, prom.GetLabels()...)
@@ -123,6 +131,17 @@ func (pm *PrometheusExporter) ScrapeRegistry(registry *Registry, includeChildMet
 		registry.Each(f)
 	} else {
 		registry.Select(pm.selection, f)
+	}
+}
+
+func getAggregationTemporality(m interface{}) AggregationTemporality {
+	switch metricType := m.(type) {
+	case GaugeVec:
+		return metricType.aggregationTemporality
+	case CounterVec:
+		return metricType.aggregationTemporality
+	default:
+		return AggregationTemporalityCumulative
 	}
 }
 

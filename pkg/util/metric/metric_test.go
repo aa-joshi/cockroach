@@ -53,7 +53,7 @@ func TestGauge(t *testing.T) {
 }
 
 func TestGaugeVector(t *testing.T) {
-	g := NewExportedGaugeVec(emptyMetadata, []string{"label1", "label2"})
+	g := NewExportedGaugeVec(emptyMetadata, []string{"label1", "label2"}, AggregationTemporalityCumulative)
 	ls1 := map[string]string{"label1": "value1", "label2": "value2"}
 	ls2 := map[string]string{"label1": "value3", "label2": "value4"}
 
@@ -650,7 +650,7 @@ func (cv *CounterVec) assertPrometheusMetrics(t *testing.T, tc []toPromMetricsTC
 
 func TestCounterVec(t *testing.T) {
 	t.Run("labels provided match what is declared", func(t *testing.T) {
-		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2"})
+		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2"}, AggregationTemporalityCumulative)
 		t.Run("update", func(t *testing.T) {
 			assert.NotPanics(t, func() {
 				c.Update(map[string]string{
@@ -715,7 +715,7 @@ func TestCounterVec(t *testing.T) {
 	})
 
 	t.Run("labels provided exceed what is declared", func(t *testing.T) {
-		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2"})
+		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2"}, AggregationTemporalityCumulative)
 		t.Run("update", func(t *testing.T) {
 			assert.NotPanics(t, func() {
 				c.Update(map[string]string{
@@ -757,7 +757,7 @@ func TestCounterVec(t *testing.T) {
 	})
 
 	t.Run("labels provided are less than what is declared", func(t *testing.T) {
-		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2", "label3"})
+		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2", "label3"}, AggregationTemporalityCumulative)
 		t.Run("update", func(t *testing.T) {
 			assert.NotPanics(t, func() {
 				c.Update(map[string]string{
@@ -792,7 +792,7 @@ func TestCounterVec(t *testing.T) {
 	})
 
 	t.Run("no matching labels", func(t *testing.T) {
-		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2"})
+		c := NewExportedCounterVec(emptyMetadata, []string{"label1", "label2"}, AggregationTemporalityCumulative)
 		t.Run("update", func(t *testing.T) {
 			assert.NotPanics(t, func() {
 				c.Update(map[string]string{

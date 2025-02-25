@@ -622,13 +622,13 @@ func TestMetricsRecorder(t *testing.T) {
 			case "counterVec":
 				// Note that we don't call addExpected for this case. metric.PrometheusVector
 				// metrics should not be recorded into TSDB.
-				cv := metric.NewExportedCounterVec(metric.Metadata{Name: reg.prefix + data.name}, []string{"label1"})
+				cv := metric.NewExportedCounterVec(metric.Metadata{Name: reg.prefix + data.name}, []string{"label1"}, metric.AggregationTemporalityCumulative)
 				reg.reg.AddMetric(cv)
 				cv.Inc(map[string]string{"label1": "label1"}, data.val)
 			case "gaugeVec":
 				// Note that we don't call addExpected for this case. metric.PrometheusVector
 				// metrics should not be recorded into TSDB.
-				gv := metric.NewExportedGaugeVec(metric.Metadata{Name: reg.prefix + data.name}, []string{"label1"})
+				gv := metric.NewExportedGaugeVec(metric.Metadata{Name: reg.prefix + data.name}, []string{"label1"}, metric.AggregationTemporalityCumulative)
 				reg.reg.AddMetric(gv)
 				gv.Update(map[string]string{"label1": "label1"}, data.val)
 			case "histogramVec":

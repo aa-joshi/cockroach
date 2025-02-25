@@ -1062,6 +1062,12 @@ var (
 		Measurement: "SQL Statements",
 		Unit:        metric.Unit_COUNT,
 	}
+	MetaSelectDeltaExecuted = metric.Metadata{
+		Name:        "sql.select.delta.count",
+		Help:        "Number of SQL SELECT statements successfully executed",
+		Measurement: "SQL Statements",
+		Unit:        metric.Unit_COUNT,
+	}
 	MetaUpdateExecuted = metric.Metadata{
 		Name:        "sql.update.count",
 		Help:        "Number of SQL UPDATE statements successfully executed",

@@ -266,10 +266,10 @@ func MakeMetrics(histogramWindow time.Duration) metric.Struct {
 		CatchupRanges:  metric.NewGauge(metaCatchupRanges),
 
 		// Labeled export-only metrics.
-		LabeledReplicatedTime: metric.NewExportedGaugeVec(metaLabeledReplicatedTime, []string{"label"}),
-		LabeledEventsIngested: metric.NewExportedCounterVec(metaLabeledEventsIngetsted, []string{"label"}),
-		LabeledEventsDLQed:    metric.NewExportedCounterVec(metaLabeledEventsDLQed, []string{"label"}),
-		LabeledScanningRanges: metric.NewExportedGaugeVec(metaLabeledScanningRanges, []string{"label"}),
-		LabeledCatchupRanges:  metric.NewExportedGaugeVec(metaLabeledCatchupRanges, []string{"label"}),
+		LabeledReplicatedTime: metric.NewExportedGaugeVec(metaLabeledReplicatedTime, []string{"label"}, metric.AggregationTemporalityCumulative),
+		LabeledEventsIngested: metric.NewExportedCounterVec(metaLabeledEventsIngetsted, []string{"label"}, metric.AggregationTemporalityCumulative),
+		LabeledEventsDLQed:    metric.NewExportedCounterVec(metaLabeledEventsDLQed, []string{"label"}, metric.AggregationTemporalityCumulative),
+		LabeledScanningRanges: metric.NewExportedGaugeVec(metaLabeledScanningRanges, []string{"label"}, metric.AggregationTemporalityCumulative),
+		LabeledCatchupRanges:  metric.NewExportedGaugeVec(metaLabeledCatchupRanges, []string{"label"}, metric.AggregationTemporalityCumulative),
 	}
 }

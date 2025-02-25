@@ -1273,6 +1273,13 @@ func (v *vector) clear() {
 	v.encounteredLabelValues = [][]string{}
 }
 
+type AggregationTemporality int32
+
+const (
+	AggregationTemporalityCumulative AggregationTemporality = iota
+	AggregationTemporalityDelta
+)
+
 // GaugeVec is a collector for gauges that have a variable set of labels.
 // This uses the prometheus.GaugeVec under the hood. The contained gauges are
 // not persisted by the internal TSDB, nor are they aggregated; see aggmetric
@@ -1281,13 +1288,14 @@ func (v *vector) clear() {
 type GaugeVec struct {
 	Metadata
 	vector
-	promVec *prometheus.GaugeVec
+	promVec                *prometheus.GaugeVec
+	aggregationTemporality AggregationTemporality
 }
 
 // NewExportedGaugeVec creates a new GaugeVec containing labeled gauges to be
 // exported to an external collector, but is not persisted by the internal TSDB,
 // nor are the metrics in the vector aggregated in any way.
-func NewExportedGaugeVec(metadata Metadata, labelSchema []string) *GaugeVec {
+func NewExportedGaugeVec(metadata Metadata, labelSchema []string, temporality AggregationTemporality) *GaugeVec {
 	vec := newVector(labelSchema)
 
 	promVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -1296,9 +1304,10 @@ func NewExportedGaugeVec(metadata Metadata, labelSchema []string) *GaugeVec {
 	}, vec.orderedLabelNames)
 
 	return &GaugeVec{
-		Metadata: metadata,
-		vector:   vec,
-		promVec:  promVec,
+		Metadata:               metadata,
+		vector:                 vec,
+		promVec:                promVec,
+		aggregationTemporality: temporality,
 	}
 }
 
@@ -1368,14 +1377,15 @@ func (gv *GaugeVec) ToPrometheusMetrics() []*prometheusgo.Metric {
 type CounterVec struct {
 	Metadata
 	vector
-	promVec *prometheus.CounterVec
+	promVec                *prometheus.CounterVec
+	aggregationTemporality AggregationTemporality
 }
 
 // NewExportedCounterVec creates a new CounterVec containing labeled counters to
 // be exported to an external collector; the contained counters are not
 // aggregated or persisted to the tsdb (see aggmetric.Counter for a counter that
 // persists the aggregation of n labeled child metrics).
-func NewExportedCounterVec(metadata Metadata, labelNames []string) *CounterVec {
+func NewExportedCounterVec(metadata Metadata, labelNames []string, temporality AggregationTemporality) *CounterVec {
 	vec := newVector(labelNames)
 
 	promVec := prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -1384,9 +1394,10 @@ func NewExportedCounterVec(metadata Metadata, labelNames []string) *CounterVec {
 	}, vec.orderedLabelNames)
 
 	return &CounterVec{
-		Metadata: metadata,
-		vector:   vec,
-		promVec:  promVec,
+		Metadata:               metadata,
+		vector:                 vec,
+		promVec:                promVec,
+		aggregationTemporality: temporality,
 	}
 }
 
