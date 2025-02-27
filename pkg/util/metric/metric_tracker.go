@@ -33,8 +33,8 @@ func NewMetricTracker() *MetricTracker {
 	return t
 }
 
-func (t *MetricTracker) Transform(in *prometheusgo.Metric) {
-	delta, valid := t.convert(in)
+func (t *MetricTracker) Transform(in *prometheusgo.Metric, name string) {
+	delta, valid := t.convert(in, name)
 	if !valid {
 		return
 	}
@@ -46,20 +46,21 @@ func (t *MetricTracker) Transform(in *prometheusgo.Metric) {
 	return
 }
 
-func (t *MetricTracker) convert(in *prometheusgo.Metric) (out DeltaValue, valid bool) {
-	metricName := in.String()
+func (t *MetricTracker) convert(in *prometheusgo.Metric, name string) (out DeltaValue, valid bool) {
+	metricName := generateMetricName(name, in.Label)
 	metricValue, isValid := getMetricValue(*in)
 	if !isValid {
 		return DeltaValue{}, false
 	}
-	metricTimestamp := in.TimestampMs
+	metricTimestamp := time.Now().Unix()
 
 	s, ok := t.states.LoadOrStore(metricName, &State{
-		PrevPoint: ValuePoint{FloatValue: metricValue, ObservedTimestamp: *metricTimestamp},
+		PrevPoint: ValuePoint{FloatValue: metricValue, ObservedTimestamp: metricTimestamp},
 	})
+
 	if !ok {
 		out.FloatValue = metricValue
-		out.StartTimestamp = *metricTimestamp
+		out.StartTimestamp = metricTimestamp
 		return
 	}
 
@@ -75,7 +76,8 @@ func (t *MetricTracker) convert(in *prometheusgo.Metric) (out DeltaValue, valid 
 	delta := value - prevValue
 	out.FloatValue = delta
 
-	state.PrevPoint = ValuePoint{FloatValue: metricValue, ObservedTimestamp: *metricTimestamp}
+	state.PrevPoint = ValuePoint{FloatValue: metricValue, ObservedTimestamp: metricTimestamp}
+	valid = true
 	return
 }
 func getMetricValue(metric prometheusgo.Metric) (float64, bool) {
@@ -86,4 +88,15 @@ func getMetricValue(metric prometheusgo.Metric) (float64, bool) {
 		return metric.Counter.GetValue(), true
 	}
 	return 0, false
+}
+
+func generateMetricName(name string, labels []*prometheusgo.LabelPair) string {
+	var labelStr string
+	for _, label := range labels {
+		labelStr += label.String() + ","
+	}
+	if len(labelStr) > 0 {
+		labelStr = labelStr[:len(labelStr)-1]
+	}
+	return name + "{" + labelStr + "}"
 }

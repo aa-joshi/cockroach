@@ -604,8 +604,11 @@ func makeMetrics(internal bool, sv *settings.Values) Metrics {
 			TxnRowsReadErrCount:    metric.NewCounter(getMetricMeta(MetaTxnRowsReadErr, internal)),
 		},
 		DeltaMetrics: DeltaMetrics{
-			SelectCountDelta: *metric.NewExportedCounterVec(getMetricMeta(MetaSelectDeltaExecuted, internal), []string{"app_name"}, metric.AggregationTemporalityDelta),
+			SelectCountDelta: metric.NewExportedCounterVec(getMetricMeta(MetaSelectDeltaExecuted, internal), []string{"app_name", "db_name"}, metric.AggregationTemporalityCumulative),
 		},
+		/*DeltaMetrics: DeltaMetrics{
+			SelectCountDelta: metric.NewCounter(getMetricMeta(MetaSelectDeltaExecuted, internal)),
+		},*/
 	}
 }
 
@@ -4541,11 +4544,12 @@ func (ex *connExecutor) getDescIDGenerator() eval.DescIDGenerator {
 }
 
 type DeltaMetrics struct {
-	SelectCountDelta metric.CounterVec
+	SelectCountDelta *metric.CounterVec
 }
 
 func (dm *DeltaMetrics) incrementCount(ex *connExecutor, stmt tree.Statement) {
-	dm.SelectCountDelta.Inc(map[string]string{"app_name": ex.applicationName.Load().(string)}, 1)
+	dm.SelectCountDelta.Inc(map[string]string{"app_name": ex.applicationName.Load().(string), "db_name": "tpcc"}, 1)
+	//dm.SelectCountDelta.Inc(1)
 }
 
 // StatementCounters groups metrics for counting different types of

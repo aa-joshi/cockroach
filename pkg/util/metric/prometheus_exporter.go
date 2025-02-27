@@ -43,7 +43,7 @@ type PrometheusExporter struct {
 
 // MakePrometheusExporter returns an initialized prometheus exporter.
 func MakePrometheusExporter() PrometheusExporter {
-	return PrometheusExporter{families: map[string]*prometheusgo.MetricFamily{}}
+	return PrometheusExporter{families: map[string]*prometheusgo.MetricFamily{}, metricTracker: NewMetricTracker()}
 }
 
 // MakePrometheusExporterForSelectedMetrics returns an initialized prometheus
@@ -92,8 +92,8 @@ func (pm *PrometheusExporter) ScrapeRegistry(registry *Registry, includeChildMet
 				aggregationTemporality := getAggregationTemporality(m)
 
 				// If the metric is a delta metric, we need to convert it to a delta value.
-				if aggregationTemporality == AggregationTemporalityDelta {
-
+				if aggregationTemporality == AggregationTemporalityDelta || name == "sql.select.delta.count" {
+					pm.metricTracker.Transform(m, name)
 				}
 				m := m
 				m.Label = append(m.Label, labels...)
