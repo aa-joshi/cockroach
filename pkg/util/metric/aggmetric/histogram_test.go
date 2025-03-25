@@ -16,15 +16,17 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/testutils/datapathutils"
 	"github.com/cockroachdb/cockroach/pkg/testutils/echotest"
+	"github.com/cockroachdb/cockroach/pkg/util/cache"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
 	"github.com/cockroachdb/cockroach/pkg/util/metric"
 	"github.com/cockroachdb/crlib/testutils/require"
 	"github.com/prometheus/common/expfmt"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAggHistogram(t *testing.T) {
 	defer leaktest.AfterTest(t)()
-	const cacheSize = 10
+	const cacheSize = 1
 	r := metric.NewRegistry()
 	writePrometheusMetrics := func(t *testing.T) string {
 		var in bytes.Buffer
@@ -49,12 +51,17 @@ func TestAggHistogram(t *testing.T) {
 		},
 		Duration:     base.DefaultHistogramWindowInterval(),
 		MaxVal:       100,
-		SigFigs:      1,
 		BucketConfig: metric.Percent100Buckets,
 	}, "tenant_id", "hist_label")
 	r.AddMetric(h)
-	h.mu.children.ShouldEvict = func(size int, key, value interface{}) bool {
-		return size > 10
+	cacheStorage := cache.NewUnorderedCache(cache.Config{
+		Policy: cache.CacheLRU,
+		ShouldEvict: func(size int, key, value interface{}) bool {
+			return size > 1
+		},
+	})
+	h.mu.children = &UnorderedCacheWrapper{
+		cache: cacheStorage,
 	}
 
 	for i := 0; i < cacheSize; i++ {
@@ -64,10 +71,27 @@ func TestAggHistogram(t *testing.T) {
 	testFile := "aggHistogram_pre_eviction.txt"
 	echotest.Require(t, writePrometheusMetrics(t), datapathutils.TestDataPath(t, testFile))
 
-	for i := 0 + cacheSize; i < cacheSize+5; i++ {
+	for i := 0 + cacheSize; i < cacheSize+1; i++ {
 		h.RecordValue(10, "2", strconv.Itoa(i))
 	}
 
 	testFile = "aggHistogram_post_eviction.txt"
 	echotest.Require(t, writePrometheusMetrics(t), datapathutils.TestDataPath(t, testFile))
+}
+
+func TestPanicForAggHistogramWithBtreeStorage(t *testing.T) {
+	defer leaktest.AfterTest(t)()
+	h := NewHistogram(metric.HistogramOptions{
+		Metadata: metric.Metadata{
+			Name: "histo_gram",
+		},
+		Duration:     base.DefaultHistogramWindowInterval(),
+		MaxVal:       100,
+		SigFigs:      1,
+		BucketConfig: metric.Percent100Buckets,
+	}, "tenant_id", "hist_label")
+
+	assert.Panics(t, func() {
+		h.RecordValue(1, "1", "1")
+	}, "expected panic when RecordValue is invoked on AggHistogram with BTreeStorage")
 }
