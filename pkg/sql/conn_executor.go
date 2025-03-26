@@ -82,6 +82,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/log/logcrash"
 	"github.com/cockroachdb/cockroach/pkg/util/log/severity"
 	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/cockroachdb/cockroach/pkg/util/metric/aggmetric"
 	"github.com/cockroachdb/cockroach/pkg/util/mon"
 	"github.com/cockroachdb/cockroach/pkg/util/sentryutil"
 	"github.com/cockroachdb/cockroach/pkg/util/stop"
@@ -543,6 +544,8 @@ func makeMetrics(internal bool, sv *settings.Values) Metrics {
 	detailedLatencyMetrics.SetOnChange(sv, func(ctx context.Context) {
 		sqlExecLatencyDetail.Clear()
 	})
+
+	aggmetric.InitMetricTracker(sv)
 
 	return Metrics{
 		EngineMetrics: EngineMetrics{

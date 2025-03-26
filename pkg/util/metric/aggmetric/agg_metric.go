@@ -61,16 +61,14 @@ func (b Builder) Histogram(opts metric.HistogramOptions) *AggHistogram {
 }
 
 type childSet struct {
-	labels []string
-	mu     struct {
-		syncutil.Mutex
-		children ChildrenStorage
-	}
+	syncutil.Mutex
+	children ChildrenStorage
+	labels   []string
 }
 
 func (cs *childSet) initWithBTreeStorageType(labels []string) {
 	cs.labels = labels
-	cs.mu.children = &BtreeWrapper{
+	cs.children = &BtreeWrapper{
 		tree: btree.New(8),
 	}
 }
@@ -88,7 +86,7 @@ func (cs *childSet) initWithCacheStorageType(labels []string) {
 			return size > cacheSize
 		},
 	})
-	cs.mu.children = &UnorderedCacheWrapper{
+	cs.children = &UnorderedCacheWrapper{
 		cache: cacheStorage,
 	}
 }
@@ -96,10 +94,10 @@ func (cs *childSet) initWithCacheStorageType(labels []string) {
 func (cs *childSet) Each(
 	labels []*io_prometheus_client.LabelPair, f func(metric *io_prometheus_client.Metric),
 ) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
-	cs.mu.children.Do(func(e interface{}) {
-		cm := cs.mu.children.GetChildMetric(e)
+	cs.Lock()
+	defer cs.Unlock()
+	cs.children.Do(func(e interface{}) {
+		cm := cs.children.GetChildMetric(e)
 		pm := cm.ToPrometheusMetric()
 
 		childLabels := make([]*io_prometheus_client.LabelPair, 0, len(labels)+len(cs.labels))
@@ -118,10 +116,10 @@ func (cs *childSet) Each(
 
 // apply applies the given applyFn to every item in the childSet
 func (cs *childSet) apply(applyFn func(item MetricItem)) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
-	cs.mu.children.Do(func(e interface{}) {
-		applyFn(cs.mu.children.GetChildMetric(e).(MetricItem))
+	cs.Lock()
+	defer cs.Unlock()
+	cs.children.Do(func(e interface{}) {
+		applyFn(cs.children.GetChildMetric(e).(MetricItem))
 	})
 }
 
@@ -132,21 +130,28 @@ func (cs *childSet) add(metric ChildMetric) {
 			"cannot add child with %d label values %v to a metric with %d labels %v",
 			len(lvs), lvs, len(cs.labels), cs.labels))
 	}
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
-	cs.mu.children.Add(metric)
+	cs.Lock()
+	defer cs.Unlock()
+	cs.children.Add(metric)
 }
 
 func (cs *childSet) remove(metric ChildMetric) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
-	cs.mu.children.Del(metric)
+	cs.Lock()
+	defer cs.Unlock()
+	cs.children.Del(metric)
 }
 
 func (cs *childSet) get(labelVals ...string) (ChildMetric, bool) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
-	return cs.mu.children.Get(labelVals...)
+	cs.Lock()
+	defer cs.Unlock()
+	return cs.children.Get(labelVals...)
+}
+
+func (cs *childSet) reinitialise(labelVals ...string) {
+	cs.Lock()
+	defer cs.Unlock()
+	cs.children.Clear()
+	cs.labels = labelVals
 }
 
 type MetricItem interface {
@@ -185,6 +190,7 @@ type ChildrenStorage interface {
 	Del(key ChildMetric)
 	Do(f func(e interface{}))
 	GetChildMetric(e interface{}) ChildMetric
+	Clear()
 }
 
 var _ ChildrenStorage = &UnorderedCacheWrapper{}
@@ -229,8 +235,16 @@ func (ucw *UnorderedCacheWrapper) Do(f func(e interface{})) {
 	})
 }
 
+func (ucw *UnorderedCacheWrapper) Clear() {
+	ucw.cache.Clear()
+}
+
 type BtreeWrapper struct {
 	tree *btree.BTree
+}
+
+func (b BtreeWrapper) Clear() {
+	b.tree.Clear(false)
 }
 
 func (b BtreeWrapper) Get(labelVals ...string) (ChildMetric, bool) {

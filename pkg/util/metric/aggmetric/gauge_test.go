@@ -39,7 +39,7 @@ func TestAggGaugeEviction(t *testing.T) {
 			return size > 10
 		},
 	})
-	g.mu.children = &UnorderedCacheWrapper{
+	g.children = &UnorderedCacheWrapper{
 		cache: cacheStorage,
 	}
 
@@ -87,7 +87,7 @@ func TestAggGaugeMethods(t *testing.T) {
 			return size > 10
 		},
 	})
-	g.mu.children = &UnorderedCacheWrapper{
+	g.children = &UnorderedCacheWrapper{
 		cache: cacheStorage,
 	}
 	r.AddMetric(g)
@@ -137,7 +137,7 @@ func TestAggGaugeFloat64Eviction(t *testing.T) {
 			return size > 10
 		},
 	})
-	g.mu.children = &UnorderedCacheWrapper{
+	g.children = &UnorderedCacheWrapper{
 		cache: cacheStorage,
 	}
 

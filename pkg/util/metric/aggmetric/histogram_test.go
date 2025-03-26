@@ -60,7 +60,7 @@ func TestAggHistogram(t *testing.T) {
 			return size > 1
 		},
 	})
-	h.mu.children = &UnorderedCacheWrapper{
+	h.children = &UnorderedCacheWrapper{
 		cache: cacheStorage,
 	}
 

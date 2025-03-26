@@ -44,10 +44,10 @@ func NewFunctionalGauge(
 	g := &AggGauge{}
 	gaugeFn := func() int64 {
 		values := make([]int64, 0)
-		g.childSet.mu.Lock()
-		defer g.childSet.mu.Unlock()
-		g.childSet.mu.children.Do(func(e interface{}) {
-			cg := g.childSet.mu.children.GetChildMetric(e).(*Gauge)
+		g.childSet.Lock()
+		defer g.childSet.Unlock()
+		g.childSet.children.Do(func(e interface{}) {
+			cg := g.childSet.children.GetChildMetric(e).(*Gauge)
 			values = append(values, cg.Value())
 		})
 		return f(values)

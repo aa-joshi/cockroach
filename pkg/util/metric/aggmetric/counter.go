@@ -34,6 +34,12 @@ func NewCounter(metadata metric.Metadata, childLabels ...string) *AggCounter {
 	return c
 }
 
+func NewCounterWithCacheStorageType(metadata metric.Metadata, childLabels ...string) *AggCounter {
+	c := &AggCounter{g: *metric.NewCounter(metadata)}
+	c.initWithBTreeStorageType(childLabels)
+	return c
+}
+
 // GetName is part of the metric.Iterable interface.
 func (c *AggCounter) GetName() string { return c.g.GetName() }
 

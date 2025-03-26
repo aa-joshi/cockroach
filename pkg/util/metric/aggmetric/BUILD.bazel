@@ -4,6 +4,7 @@ go_library(
     name = "aggmetric",
     srcs = [
         "agg_metric.go",
+        "agg_metric_tracker.go",
         "counter.go",
         "gauge.go",
         "histogram.go",
@@ -11,6 +12,7 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/util/metric/aggmetric",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/settings",
         "//pkg/util/cache",
         "//pkg/util/metric",
         "//pkg/util/metric/tick",
@@ -28,6 +30,7 @@ go_test(
     size = "small",
     srcs = [
         "agg_metric_test.go",
+        "agg_metric_tracker_test.go",
         "counter_test.go",
         "gauge_test.go",
         "histogram_test.go",
