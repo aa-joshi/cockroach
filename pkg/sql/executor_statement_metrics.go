@@ -17,6 +17,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlstats"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/metric"
+	"github.com/cockroachdb/cockroach/pkg/util/metric/aggmetric"
 )
 
 // EngineMetrics groups a set of SQL metrics.
@@ -34,10 +35,10 @@ type EngineMetrics struct {
 	DistSQLExecLatency    metric.IHistogram
 	SQLExecLatency        metric.IHistogram
 	DistSQLServiceLatency metric.IHistogram
-	SQLServiceLatency     metric.IHistogram
-	SQLTxnLatency         metric.IHistogram
-	SQLTxnsOpen           *metric.Gauge
-	SQLActiveStatements   *metric.Gauge
+	SQLServiceLatency     *aggmetric.AggHistogram
+	SQLTxnLatency         *aggmetric.AggHistogram
+	SQLTxnsOpen           *aggmetric.AggGauge
+	SQLActiveStatements   *aggmetric.AggGauge
 	SQLContendedTxns      *metric.Counter
 
 	// TxnAbortCount counts transactions that were aborted, either due
@@ -46,7 +47,7 @@ type EngineMetrics struct {
 	TxnAbortCount *metric.Counter
 
 	// FailureCount counts non-retriable errors in open transactions.
-	FailureCount *metric.Counter
+	FailureCount *aggmetric.AggCounter
 
 	// StatementTimeoutCount tracks the number of statement failures due
 	// to exceeding the statement timeout.
@@ -57,7 +58,7 @@ type EngineMetrics struct {
 	TransactionTimeoutCount *metric.Counter
 
 	// FullTableOrIndexScanCount counts the number of full table or index scans.
-	FullTableOrIndexScanCount *metric.Counter
+	FullTableOrIndexScanCount *aggmetric.AggCounter
 
 	// FullTableOrIndexScanRejectedCount counts the number of queries that were
 	// rejected because of the `disallow_full_table_scans` guardrail.
@@ -236,8 +237,10 @@ func (ex *connExecutor) recordStatementSummary(
 		}
 
 		if queryLevelStats.ContentionTime > 0 {
-			ex.planner.DistSQLPlanner().distSQLSrv.Metrics.ContendedQueriesCount.Inc(1)
-			ex.planner.DistSQLPlanner().distSQLSrv.Metrics.CumulativeContentionNanos.Inc(queryLevelStats.ContentionTime.Nanoseconds())
+			labelValues := ex.getLabelValues()
+			ex.planner.DistSQLPlanner().distSQLSrv.Metrics.ContendedQueriesCount.Inc(1, labelValues...)
+			ex.planner.DistSQLPlanner().distSQLSrv.Metrics.CumulativeContentionNanos.Inc(queryLevelStats.ContentionTime.Nanoseconds(),
+				labelValues...)
 		}
 	}
 
@@ -318,7 +321,7 @@ func (ex *connExecutor) recordStatementLatencyMetrics(
 				m.SQLExecLatencyDetail.Observe(labels, float64(runLatRaw.Nanoseconds()))
 			}
 			m.SQLExecLatency.RecordValue(runLatRaw.Nanoseconds())
-			m.SQLServiceLatency.RecordValue(svcLatRaw.Nanoseconds())
+			m.SQLServiceLatency.RecordValue(svcLatRaw.Nanoseconds(), ex.getLabelValues()...)
 		}
 	}
 }

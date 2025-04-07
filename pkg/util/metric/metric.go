@@ -1574,16 +1574,13 @@ func (lv *LabelValueConfig) SetAppNameLabelEnabled(enabled bool) {
 
 // GetLabelValues appends db and app label values to existing labelValues based on
 // dbNameLabelEnabled and appNameLabelEnabled.
-func (lv *LabelValueConfig) GetLabelValues(
-	dbName string, appName string, labelValues ...string,
-) []string {
-	var labels []string
+func (lv *LabelValueConfig) GetLabelValues(dbName string, appName string) []string {
+	labels := make([]string, 0, 2)
 	if lv.dbNameLabelEnabled {
 		labels = append(labels, dbName)
 	}
 	if lv.appNameLabelEnabled {
 		labels = append(labels, appName)
 	}
-	labels = append(labels, labelValues...)
 	return labels
 }
