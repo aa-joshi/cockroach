@@ -414,7 +414,7 @@ func (ex *connExecutor) execStmtInOpenState(
 
 		// Note ex.metrics is Server.Metrics for the connExecutor that serves the
 		// client connection, and is Server.InternalMetrics for internal executors.
-		ex.metrics.EngineMetrics.SQLActiveStatements.Dec(1)
+		ex.metrics.EngineMetrics.SQLActiveStatements.Dec(1, ex.getLabelValues()...)
 	}()
 
 	// Special handling for SET TRANSACTION statements within a stored procedure
@@ -429,7 +429,7 @@ func (ex *connExecutor) execStmtInOpenState(
 
 	// Note ex.metrics is Server.Metrics for the connExecutor that serves the
 	// client connection, and is Server.InternalMetrics for internal executors.
-	ex.metrics.EngineMetrics.SQLActiveStatements.Inc(1)
+	ex.metrics.EngineMetrics.SQLActiveStatements.Inc(1, ex.getLabelValues()...)
 
 	p := &ex.planner
 	stmtTS := ex.server.cfg.Clock.PhysicalTime()
@@ -1369,7 +1369,7 @@ func (ex *connExecutor) execStmtInOpenStateWithPausablePortal(
 
 		// Note ex.metrics is Server.Metrics for the connExecutor that serves the
 		// client connection, and is Server.InternalMetrics for internal executors.
-		ex.metrics.EngineMetrics.SQLActiveStatements.Dec(1)
+		ex.metrics.EngineMetrics.SQLActiveStatements.Dec(1, ex.getLabelValues()...)
 	}()
 
 	// Special handling for SET TRANSACTION statements within a stored procedure
@@ -1384,7 +1384,7 @@ func (ex *connExecutor) execStmtInOpenStateWithPausablePortal(
 
 	// Note ex.metrics is Server.Metrics for the connExecutor that serves the
 	// client connection, and is Server.InternalMetrics for internal executors.
-	ex.metrics.EngineMetrics.SQLActiveStatements.Inc(1)
+	ex.metrics.EngineMetrics.SQLActiveStatements.Inc(1, ex.getLabelValues()...)
 
 	// TODO(sql-sessions): persist the planner for a pausable portal, and reuse
 	// it for each re-execution.
@@ -4263,7 +4263,7 @@ func (ex *connExecutor) recordTransactionStart(txnID uuid.UUID) {
 
 	// Note ex.metrics is Server.Metrics for the connExecutor that serves the
 	// client connection, and is Server.InternalMetrics for internal executors.
-	ex.metrics.EngineMetrics.SQLTxnsOpen.Inc(1)
+	ex.metrics.EngineMetrics.SQLTxnsOpen.Inc(1, ex.getLabelValues()...)
 
 	ex.extraTxnState.shouldExecuteOnTxnFinish = true
 	ex.extraTxnState.txnFinishClosure.txnStartTime = txnStart
@@ -4308,8 +4308,9 @@ func (ex *connExecutor) recordTransactionFinish(
 	if contentionDuration := ex.extraTxnState.accumulatedStats.ContentionTime.Nanoseconds(); contentionDuration > 0 {
 		ex.metrics.EngineMetrics.SQLContendedTxns.Inc(1)
 	}
-	ex.metrics.EngineMetrics.SQLTxnsOpen.Dec(1)
-	ex.metrics.EngineMetrics.SQLTxnLatency.RecordValue(elapsedTime.Nanoseconds())
+	labelValues := ex.getLabelValues()
+	ex.metrics.EngineMetrics.SQLTxnsOpen.Dec(1, labelValues...)
+	ex.metrics.EngineMetrics.SQLTxnLatency.RecordValue(elapsedTime.Nanoseconds(), labelValues...)
 
 	ex.txnIDCacheWriter.Record(contentionpb.ResolvedTxnID{
 		TxnID:            ev.txnID,
