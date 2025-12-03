@@ -362,8 +362,9 @@ func (sch *SQLChildHistogram) Value() metric.HistogramSnapshot {
 // allowing for automatic eviction of less frequently used child metrics.
 // This is useful when dealing with high cardinality metrics that might exceed resource limits.
 type HighCardinalityHistogram struct {
-	h      metric.IHistogram
-	create func() metric.IHistogram
+	h                metric.IHistogram
+	evictedHistogram metric.IHistogram
+	create           func() metric.IHistogram
 	childSet
 	labelSliceCache *metric.LabelSliceCache
 	ticker          struct {
@@ -392,16 +393,18 @@ func NewHighCardinalityHistogram(
 		return metric.NewHistogram(opts)
 	}
 	h := &HighCardinalityHistogram{
-		h:      create(),
-		create: create,
+		h:                create(),
+		evictedHistogram: create(),
+		create:           create,
 	}
 	h.ticker.Ticker = tick.NewTicker(
 		now(),
 		opts.Duration/metric.WindowedHistogramWrapNum,
 		func() {
 			// Atomically rotate the histogram window for the
-			// parent histogram, and all the child histograms.
+			// parent histogram, evicted histogram, and all the child histograms.
 			h.h.Tick()
+			h.evictedHistogram.Tick()
 			h.childSet.apply(func(childItem MetricItem) {
 				childHist, ok := childItem.(*HighCardinalityChildHistogram)
 				if !ok {
@@ -487,6 +490,31 @@ func (h *HighCardinalityHistogram) RecordValue(v int64, labelValues ...string) {
 func (h *HighCardinalityHistogram) Each(
 	labels []*prometheusgo.LabelPair, f func(metric *prometheusgo.Metric),
 ) {
+	// Emit parent value counter with value_type="aggregated" label
+	parentLabels := make([]*prometheusgo.LabelPair, len(labels)+1)
+	copy(parentLabels, labels)
+	parentLabels[len(labels)] = &prometheusgo.LabelPair{
+		Name:  &valueTypeLabel,
+		Value: &aggregatedValueLabel,
+	}
+
+	parentMetric := h.h.ToPrometheusMetric()
+	parentMetric.Label = parentLabels
+	f(parentMetric)
+
+	// Emit evicted value histogram with value_type="evicted" label
+	evictedLabels := make([]*prometheusgo.LabelPair, len(labels)+1)
+	copy(evictedLabels, labels)
+	evictedLabels[len(labels)] = &prometheusgo.LabelPair{
+		Name:  &valueTypeLabel,
+		Value: &evictedValueLabel,
+	}
+
+	evictedMetric := h.evictedHistogram.ToPrometheusMetric()
+	evictedMetric.Label = evictedLabels
+	f(evictedMetric)
+
+	// Then emit child metrics
 	h.EachWithLabels(labels, f, h.labelSliceCache)
 }
 
@@ -545,7 +573,7 @@ func (h *HighCardinalityChildHistogram) CreatedAt() time.Time {
 	return h.createdAt
 }
 
-func (h *HighCardinalityChildHistogram) DecrementLabelSliceCacheReference() {
+func (h *HighCardinalityChildHistogram) UpdateLabelReference() {
 	h.LabelSliceCache.DecrementAndDeleteIfZero(h.LabelSliceCacheKey)
 }
 
